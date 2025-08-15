@@ -19,6 +19,10 @@ Highlight:
 - Prior work they say is insufficient, 
 - Specific real-world stakes (datasets, applications, societal impact).
 
+## Get a high-level outline you can keep as a reference “table of contents.”
+### Prompt
+- Create a hierarchical outline of the paper. For every top-level section include a one-line purpose statement. For sub-sections, add a short note (~5 words) on what is done or proved there. Return in Markdown outline format.
+
 ## Breaking Down Complex Mathematical Concepts
 ### Prompt:
 - Explain all the mathematical functions in the text to a under grad student.
