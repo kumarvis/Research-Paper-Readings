@@ -47,3 +47,130 @@ At first, I want an elaborate summary of the entire article. Return a bullet lis
 ---
 
 
+
+
+# Equations (1) – (4) in Vision Transformer (ViT)
+
+Below each formula you’ll find  
+• the **exact equation** in LaTeX  
+• definitions of every symbol  
+• a plain-language explanation  
+• short analogies to standard NLP Transformers or CNNs  
+
+---
+
+## Prompt 99
+
+For equation 1 to 4 , Explain all the mathematical functions in the text to a under grad student. Who knows basic deep learning, machine learning but not this technique. Do NOT omit symbols: rewrite each equation, define every variable, and describe each step in plain language.
+Where relevant, draw analogies to known models (e.g., Transformer, CNN). Use numbered steps for algorithm flow
+
+## Prompt Output 99
+## Equation (1)
+```math
+\[
+z^{0} = \bigl[\,x_{\text{class}};\;x^{1}_{p}E;\;x^{2}_{p}E;\;\dots;\;x^{N}_{p}E\,\bigr] \;+\; E_{\text{pos}}
+\]
+```
+**Variable glossary**
+
+* $$\(x\in\mathbb{R}^{H\times W\times C}\)$$ – full RGB image (height \(H\), width \(W\), channels \(C\)).  
+* Patch size $$\(P\times P\)$$; number of patches $$\(N=\tfrac{HW}{P^{2}}\)$$.  
+* $$\(x^{i}_{p}\in\mathbb{R}^{P^{2}C}\)$$ – flattened pixel vector of patch $$\(i\)$$.  
+* $$\(E\in\mathbb{R}^{(P^{2}C)\times D}\)$$ – learnable linear projection (turns a patch into a $$\(D\)$$-dimensional “word embedding”).  
+* $$\(x_{\text{class}}\in\mathbb{R}^{1\times D}\)$$ – learnable **[CLS]** token that will gather global image information.  
+* $$\(E_{\text{pos}}\in\mathbb{R}^{(N+1)\times D}\)$$ – learnable positional embeddings (one per token, including the class token).  
+* $$\(z^{0}\in\mathbb{R}^{(N+1)\times D}\)$$ – sequence injected into the Transformer.
+
+**Plain-language explanation**
+
+1. **Cut** the image into non-overlapping tiles (patches).  
+2. **Flatten** each tile’s pixels into a long vector.  
+3. **Project** every vector through the same linear layer $$\(E\)$$ to get a patch embedding.  
+4. **Prepend** a special learnable token $$\(x_{\text{class}}\)$$.  
+5. **Add** positional embeddings so the model knows where each patch came from.  
+
+Analogy: identical to mapping words→embeddings in BERT, just replacing “words” with image patches.
+
+---
+
+### Equation (2)
+
+```math
+\boxed{\,z'_{\ell}
+       = \mathrm{MSA}\!\bigl(\mathrm{LN}(z_{\ell-1})\bigr) + z_{\ell-1}
+       \quad\text{for } \ell = 1\ldots L}
+```
+
+1. **Symbols**
+    - Layer index $\ell$.
+    - $\mathrm{LN}(\cdot)$ Layer Normalization (normalizes features within a token).
+    - $\mathrm{MSA}(\cdot)$ Multi-Head **Self-Attention** (standard Transformer block).
+    - Residual “$+$” adds the attention output back to the input $z_{\ell-1}$ (skip connection).
+    - $z'_{\ell}$ Intermediate sequence after the attention sub-layer.
+2. **Plain-language view**
+    - **Normalize** current token embeddings.
+    - **Let every patch attend to every other** (plus the class token) via multi-head attention, mixing global information.
+    - **Add** the original embeddings back in (skip-connection helps learning).
+
+Analogy: Same attention step as BERT; unlike CNNs, receptive field is instantly global.
+
+***
+
+### Equation (3)
+
+```math
+\boxed{\,z_{\ell}
+       = \mathrm{MLP}\!\bigl(\mathrm{LN}(z'_{\ell})\bigr) + z'_{\ell}
+       \quad\text{for } \ell = 1\ldots L}
+```
+
+1. **Symbols**
+    - $\mathrm{MLP}(\cdot)$ Two fully-connected layers with a GELU activation in between (also called “feed-forward network”). Dimensionality: $D \rightarrow 4D \rightarrow D$.
+    - Remaining symbols as before.
+2. **Plain-language view**
+    - **Normalize** again.
+    - **Process each token independently** with a small neural network (adds non-linearity and channel-wise mixing).
+    - **Add** skip connection.
+
+Analogy: Comparable to a 1×1 convolution (channel mixing) applied to every location in a CNN.
+
+***
+
+### Equation (4)
+
+```math
+\boxed{\,y = \mathrm{LN}\bigl(z^{0}_{L}\bigr)}
+```
+
+1. **Symbols**
+    - $z^{0}_{L}\in\mathbb{R}^{D}$ The **class-token embedding** after the final (L-th) layer; we take index 0 along the sequence (because we prepended it first).
+    - $y\in\mathbb{R}^{D}$ Final image representation after LayerNorm; fed to a softmax or MLP head for classification.
+2. **Plain-language view**
+
+The final, normalized vector of the special class token is the model’s distilled understanding of the whole image—just like the “[CLS]” vector in text BERT.
+
+***
+
+## Putting it Together – Algorithm Flow
+
+1. **Patchify \& Embed** Apply Eq.(1) to build the token sequence with positional info.
+2. **Repeat for ℓ = 1…L**
+2.1 Self-Attention with skip → Eq.(2)
+2.2 MLP with skip  → Eq.(3)
+3. **Readout** Take the Layer-NORMed class token (Eq.(4)).
+4. **Head** Pass $y$ through a linear or MLP layer to predict class logits.
+
+***
+
+### Key Intuitions
+
+- **Global context early**: Unlike CNNs, attention lets even low-level layers see the entire image, not just a small kernel.
+- **Minimal vision bias**: The only “inductive bias” is square patching and adding position embeddings; everything else is generic Transformer machinery.
+- **Same math as text Transformers**: If you understand BERT’s forward pass, swap “words” for “image patches” and you’ve got ViT’s core.
+
+
+
+
+
+
+
