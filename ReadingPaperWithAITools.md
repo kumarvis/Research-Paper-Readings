@@ -34,6 +34,8 @@ Highlight:
 ## Get a high-level outline you can keep as a reference “table of contents.”
 ### Prompt
 - Create a hierarchical outline of the paper. For every top-level section include a one-line purpose statement. For sub-sections, add a short note (~5 words) on what is done or proved there. Return in Markdown outline format.
+---
+***At this stage our grasp of the paper is only fair, not yet deep. Before we roll the AI tool forward, we should spend some time with the Research Paper itself.***
 
 ## Breaking Down Complex Mathematical Concepts
 ### Prompt:
