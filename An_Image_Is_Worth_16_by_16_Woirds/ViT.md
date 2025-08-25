@@ -417,6 +417,14 @@ The final, normalized vector of the special class token is the model’s distill
 - **Minimal vision bias**: The only “inductive bias” is square patching and adding position embeddings; everything else is generic Transformer machinery.
 - **Same math as text Transformers**: If you understand BERT’s forward pass, swap “words” for “image patches” and you’ve got ViT’s core.
 
+## Prompt 9.1 
+CODE Convert  Equation (1) to  (4) combining with steps in Figure . into clean, runnable PyTorch pseudocode. . Focus on clarity, variable shapes, and comments;  Return ONLY the code block.
+
+## Prompt 9.2 
+“Could you show a complete PyTorch data-pipeline (dataset class, transforms, and dataloaders) plus a concise training loop for classifying the Oxford-IIIT Pet images with integrating ViTEncoder  ? Please keep the code runnable end-to-end and highlight any important hyper-parameters.
+
+
+
 
 
 
