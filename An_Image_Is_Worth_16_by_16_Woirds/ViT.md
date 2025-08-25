@@ -246,22 +246,74 @@ Yes—and the authors tried it. A GAP-based head works **almost identically** if
 
 ---
 
-# Equations (1) – (4) in Vision Transformer (ViT)
+## Prompt 6
+Can suggest a better version of the question and ask me if I would like to use it instead.”
+- Question = "How this class token result in representing complete image"
+## Output 6
+Here is a cleaner, more specific way to phrase your question:
+**“How does the Vision Transformer’s learnable [class] token end up summarizing the entire image for classification?”**
+Would you like to use this wording?
 
+## Prompt 7
+# How the Vision Transformer’s **[class]** token learns to summarize the whole image
+## Output 7
+## 1. Where the [class] token fits in the ViT pipeline
+- ViT first chops an image into fixed-size patches (e.g., 16×16 px).
+- Each patch is linearly projected to a D-dimensional embedding and prepended with a single extra learnable vector dubbed **[class]**.
+- The resulting sequence (length = number of patches + 1) is fed through L Transformer encoder layers, each containing multi-head self-attention (MSA) and an MLP.
+- After the final layer, the model **only extracts the updated [class] token** (often called *zL0* in the paper) and passes it to a lightweight classifier head.
+
+Thus, the network’s entire downstream decision hinges on the information that flows into that single vector.
+
+## 2. Why information concentrates into the [class] token
+Self-attention lets every token exchange information with every other token. During training, gradients from the classification loss propagate - only-  through the [class] vector and its incoming attention weights. To minimize the loss, the model learns two complementary behaviours:
+
+1. **Patch-to-class attention grows.**  
+   Early layers already show heads where patch tokens assign high attention weights to the [class] token, creating a *funnel* that channels image content toward it.
+
+2. **Class-to-patch attention becomes selective.**  
+   Later layers feature heads where the [class] token attends back to spatial tokens that are semantically relevant (e.g., bird silhouette, steering wheel), effectively *reading* the scene. Visualizations in ViT-L/16 reveal that by layer 10+, many heads attend almost globally, but with strongest weights on object regions.
+
+Together, these two flows repeatedly mix and refine features, so by the final layer the [class] embedding is a nonlinear, global aggregation of the image.
+
+## 3. Empirical evidence
+
+| Observation | Paper section | Evidence |
+|-------------|---------------|----------|
+| Some heads attend to most of the image already in low layers | §4.5, Fig. 7 (right) | Average attention distance of several heads ≈ image size |
+| [class] attention maps highlight the target object | §4.5, Fig. 6 and Appendix Fig. 14 | Qualitative rollout shows focus on semantically relevant pixels |
+| Removing the [class] token and using global average pooling works **only** after retuning LR, confirming it’s a learnable, not structural, choice | Appendix D.3, Fig. 9 | Need different LR; otherwise large drop |
+
+## 4. Intuition vs. CNN global pooling
+A CNN funnels spatial information by gradually shrinking feature maps and finally performing global average pooling. ViT achieves a similar *information bottleneck*, but:
+
+-  The bottleneck exists **from the start** (single extra token),  
+-  It relies on learned attention patterns rather than fixed convolutional kernels,  
+-  It keeps full-resolution patch tokens to enable long-range reasoning until the last layer.
+
+## 5. Practical take-aways
+1. The [class] token is **not magic**; it works because self-attention plus the loss force it to become a global summary.  
+2. Visualization or probing (e.g., attention rollout) can help verify your fine-tuned ViT is focusing on the right regions.  
+3. If you switch to alternatives like mean-pooled patch tokens, re-tune optimization hyper-parameters—performance can match the [class] approach but is sensitive to learning rate.
+
+The [class] token therefore acts as a learned “collector” that repeatedly gathers, mixes and refines patch information through attention until it holds a representation rich enough for accurate image-level decisions.
+
+## Prompt 8
+For equation 1 to 4 , Explain all the mathematical functions in the text to a under grad student. Who knows basic deep learning, machine learning but not this technique.
+Do NOT omit symbols: rewrite each equation, define every variable, and describe each step in plain language.
+Where relevant, draw analogies to known models (e.g., Transformer, CNN). Use numbered steps for algorithm flow.
+
+# Output 8
+
+# Equations (1) – (4) in Vision Transformer (ViT)
 Below each formula you’ll find  
-• the **exact equation** in LaTeX  
+• the **exact equations**
 • definitions of every symbol  
 • a plain-language explanation  
 • short analogies to standard NLP Transformers or CNNs  
 
 ---
 
-## Prompt 99
-
-For equation 1 to 4 , Explain all the mathematical functions in the text to a under grad student. Who knows basic deep learning, machine learning but not this technique. Do NOT omit symbols: rewrite each equation, define every variable, and describe each step in plain language.
-Where relevant, draw analogies to known models (e.g., Transformer, CNN). Use numbered steps for algorithm flow
-
-## Prompt Output 99
 ## Equation (1)
 ```math
 \[
