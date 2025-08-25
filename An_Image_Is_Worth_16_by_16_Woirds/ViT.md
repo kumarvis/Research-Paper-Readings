@@ -16,7 +16,7 @@
 - Begin by replying only with: “Ready to analyze the paper. Awaiting your first instruction.”
 ---
 
-## Prompt-1
+## Prompt 1
 
 At first, I want an elaborate summary of the entire article. Return a bullet list with:  
 - Main problem addressed  
@@ -24,7 +24,7 @@ At first, I want an elaborate summary of the entire article. Return a bullet lis
 - Claimed contributions (short phrases)
 
 ---
-## Prompt Output-1
+## Output 1
 ## Vision Transformer (ViT) – High-level Take-aways
 
 - **Main problem addressed**  
@@ -45,7 +45,75 @@ At first, I want an elaborate summary of the entire article. Return a bullet lis
   - Release code & pre-trained checkpoints for reproducibility  
 
 ---
+## Prompt 2
+- Summarize the Introduction section in ≤200 words. 
+- Highlight:
+  - Practical or theoretical gap the authors claim.
+  - Prior work they say is insufficient.
+  - Specific real-world stakes (datasets, applications, societal impact).
+## Output 2
 
+The authors confront a widening gap between the **scalability of Transformers in NLP** and their modest traction in computer-vision pipelines. They argue that most vision research still leans on Convolutional Neural Networks (CNNs) whose *built-in inductive biases* (locality, translation equivariance) become liabilities when models and datasets scale.
+
+1. **Practical/Theoretical gap claimed**
+    - No compelling evidence yet shows that a *pure* Transformer—devoid of convolutional components—can match leading CNNs on large-scale image classification.
+    - Existing attention-augmented CNN hybrids inherit CNN constraints, limiting architectural simplicity and hardware efficiency.
+2. **Why prior work is insufficient**
+    - Earlier “fully-attention” models either keep some CNN stages, use specialized sparse or local attention patterns that complicate accelerator deployment, or were only tested on small images/datasets (e.g., 2×2-patch models, Sparse/Axial/Swin variants).
+    - Self-supervised iGPT reaches 72% ImageNet top-1—far below CNN SOTA—demonstrating the shortfall of prior Transformer attempts when data or compute are limited.
+3. **Real-world stakes highlighted**
+    - Benchmarks: ImageNet-1k (1.3 M images), ImageNet-21k (14 M), and Google’s JFT-300M (303 M) are emphasized as proving grounds; performance on smaller transfer sets (CIFAR-100, VTAB suite) gauges generalization.
+    - Applications: Efficient training on these massive corpora matters for *industrial-scale visual recognition systems* where compute budgets and hardware utilization dictate feasibility.
+    - Societal impact: Demonstrating that inductive biases can be learned rather than hard-coded informs future resource allocation—shifting focus from manual architecture design to data curation and availability.
+
+## Prompt 3
+Create a hierarchical outline of the paper. For every top-level section include a one-line purpose statement. For sub-sections, add a short note (\~5 words) on what is done or proved there. Return in Markdown outline format.
+
+## Output 3
+# Hierarchical Outline of “An Image Is Worth 16×16 Words”
+
+1. **Abstract** 
+*Purpose:* Summarises the problem, method and key results. 
+2. **Introduction** 
+*Purpose:* Motivates replacing CNNs with pure Transformers for vision. \
+2.1 NLP success of Transformers – scalability noted. \
+2.2 CNN dominance in vision – limits. \
+2.3 Prior hybrid/self-attention models – scaling issues. \
+2.4 Proposed ViT idea – treat patches as tokens. \
+2.5 Data-scale hypothesis – large data beats inductive bias. \
+2.6 Headline results – ImageNet 88.55%, etc. \
+3. **Related Work** 
+*Purpose:* Positions ViT against prior attention and large-scale vision efforts. \
+3.1 Transformers in NLP – pre-training paradigm. \
+3.2 Scaling attention to images – local/sparse variants. \
+3.3 Closest prior (2×2 patches) – resolution limit. \
+3.4 CNN-attention hybrids – diverse tasks. \
+3.5 iGPT comparison – 72% top-1. \
+3.6 Large-data CNN studies – motivate ViT scale. \
+4. **Method** 
+*Purpose:* Describes Vanilla Vision Transformer architecture and training tricks. \
+4.1 ViT overview – patch embedding + class token. \
+4.2 Transformer encoder math – Eqs 1-4. \
+4.3 Inductive bias discussion – minimal locality. \
+4.4 Hybrid variant – CNN stem option. \
+4.5 Fine-tuning \& resolution – pos-embed interpolation. \
+5. **Experiments** 
+*Purpose:* Empirically evaluate ViT versus CNNs, data size, compute. \
+5.1 Setup – datasets, baselines, hyper-params. \
+5.2 SOTA comparison – ViT-H/14 beats BiT. \
+5.3 Data requirement study – bigger data helps ViT. \
+5.4 Scaling study – accuracy vs exaFLOPs. \
+5.5 Model inspection – filters, position sims, attention distance. \
+5.6 Self-supervision pilot – masked patch 79.9%. \
+6. **Conclusion** 
+*Purpose:* Recaps findings, notes future research paths. \
+6.1 Pure Transformer viable – cheaper compute. \
+6.2 Open challenges – detection, SSL gap, further scaling. \
+7. **Acknowledgements** 
+*Purpose:* Credits contributors and infrastructure support. \
+8. **References** \
+*Purpose:* Lists cited prior literature.\
+9. **Appendices
 
 
 
