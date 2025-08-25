@@ -420,8 +420,211 @@ The final, normalized vector of the special class token is the model’s distill
 ## Prompt 9.1 
 CODE Convert  Equation (1) to  (4) combining with steps in Figure . into clean, runnable PyTorch pseudocode. . Focus on clarity, variable shapes, and comments;  Return ONLY the code block.
 
+### Vision Transformer – PyTorch-style pseudocode
+- Implements Equations (1)–(4) + the flow from Figure 1
+- Shapes follow (B = batch, C = channels, H,W = image size, N = #patches, D = embed dim)
+
+```python
+import torch
+import torch.nn as nn
+
+class ViTEncoder(nn.Module):
+    def __init__(
+        self,
+        img_size: int = 224,
+        patch_size: int = 16,
+        in_chans: int = 3,
+        embed_dim: int = 768,   # D
+        depth: int = 12,        # L
+        num_heads: int = 12,
+        mlp_ratio: int = 4,
+    ):
+        super().__init__()
+        assert img_size % patch_size == 0, "image size must be divisible by patch size"
+        self.N = (img_size // patch_size) ** 2                  # patches per image
+
+        # (Eq. 1) — linear projection of flattened patches
+        self.patch_embed = nn.Conv2d(in_chans, embed_dim,
+                                     kernel_size=patch_size,
+                                     stride=patch_size)          # → (B, D, H/P, W/P)
+
+        # learnable class token + 1-D position embeddings
+        self.cls_tok   = nn.Parameter(torch.zeros(1, 1, embed_dim))
+        self.pos_embed = nn.Parameter(torch.zeros(1, self.N + 1, embed_dim))
+
+        # Transformer encoder layers (Eqs. 2–3)
+        self.layers = nn.ModuleList([
+            nn.ModuleDict(dict(
+                ln1 = nn.LayerNorm(embed_dim),
+                attn = nn.MultiheadAttention(embed_dim, num_heads,
+                                             batch_first=True),
+                ln2 = nn.LayerNorm(embed_dim),
+                mlp = nn.Sequential(
+                    nn.Linear(embed_dim, embed_dim * mlp_ratio),
+                    nn.GELU(),
+                    nn.Linear(embed_dim * mlp_ratio, embed_dim),
+                )))
+            for _ in range(depth)
+        ])
+
+        self.ln_final = nn.LayerNorm(embed_dim)                 # (Eq. 4)
+
+    def forward(self, x):
+        B = x.size(0)                                            # (B, C, H, W)
+
+        # ---- Equation (1) ---------------------------------------------------
+        x = self.patch_embed(x)                                  # (B, D, H/P, W/P)
+        x = x.flatten(2).transpose(1, 2)                         # (B, N, D)
+
+        cls = self.cls_tok.expand(B, -1, -1)                     # (B, 1, D)
+        z   = torch.cat((cls, x), dim=1) + self.pos_embed        # (B, N+1, D)
+
+        # ---- Equations (2) & (3) repeated L times --------------------------
+        for blk in self.layers:
+            z = z + blk.attn(blk.ln1(z), blk.ln1(z), blk.ln1(z))[0]
+            z = z + blk.mlp(blk.ln2(z))
+
+        # ---- Equation (4) ---------------------------------------------------
+        z = self.ln_final(z)                                     # (B, N+1, D)
+        return z[:, 0]                                           # CLS token ⇒ image rep
+
+```
 ## Prompt 9.2 
 “Could you show a complete PyTorch data-pipeline (dataset class, transforms, and dataloaders) plus a concise training loop for classifying the Oxford-IIIT Pet images with integrating ViTEncoder  ? Please keep the code runnable end-to-end and highlight any important hyper-parameters.
+
+```python
+# ---------------------------------------------------
+# 1. CONFIG
+# ---------------------------------------------------
+CFG = dict(
+    img_size      = 224,   # resize-crop for ViT
+    patch_size    = 16,    # must match encoder checkpoint
+    batch_size    = 64,
+    lr            = 3e-4,  # Adam default β1=0.9, β2=0.999
+    weight_decay  = 0.05,
+    epochs        = 12,
+    num_workers   = 4,     # >0 for speed if your OS allows
+    model_name    = "vit_base_patch16_224"  # timm preset
+)
+
+# ---------------------------------------------------
+# 2. DATA PIPELINE
+# ---------------------------------------------------
+import torch, timm
+import torch.nn as nn
+import torch.optim as optim
+from torchvision import transforms, datasets
+from torch.utils.data import DataLoader
+
+MEAN = [0.485, 0.456, 0.406]
+STD  = [0.229, 0.224, 0.225]
+
+train_tfms = transforms.Compose([
+    transforms.Resize(CFG["img_size"] + 32),
+    transforms.RandomResizedCrop(CFG["img_size"]),
+    transforms.RandomHorizontalFlip(),
+    transforms.ToTensor(),
+    transforms.Normalize(MEAN, STD),
+])
+
+val_tfms = transforms.Compose([
+    transforms.Resize(CFG["img_size"] + 32),
+    transforms.CenterCrop(CFG["img_size"]),
+    transforms.ToTensor(),
+    transforms.Normalize(MEAN, STD),
+])
+
+train_set = datasets.OxfordIIITPet(
+    root="data", split="trainval", target_types="category",
+    transform=train_tfms, download=True
+)
+val_set = datasets.OxfordIIITPet(
+    root="data", split="test", target_types="category",
+    transform=val_tfms, download=True
+)
+
+train_loader = DataLoader(
+    train_set, batch_size=CFG["batch_size"], shuffle=True,
+    num_workers=CFG["num_workers"], pin_memory=True
+)
+val_loader = DataLoader(
+    val_set, batch_size=CFG["batch_size"], shuffle=False,
+    num_workers=CFG["num_workers"], pin_memory=True
+)
+
+# ---------------------------------------------------
+# 3. MODEL – ViT encoder + new classifier
+# ---------------------------------------------------
+device = "cuda" if torch.cuda.is_available() else "cpu"
+
+vit = timm.create_model(
+    CFG["model_name"],
+    pretrained=True,
+    num_classes=0        # drop original head
+)
+in_features = vit.num_features
+model = nn.Sequential(
+    vit,
+    nn.Linear(in_features, 37)   # 37 pet breeds
+).to(device)
+
+# ---------------------------------------------------
+# 4. OPTIMIZER & LR SCHEDULER
+# ---------------------------------------------------
+criterion  = nn.CrossEntropyLoss()
+optimizer  = optim.AdamW(model.parameters(),
+                         lr=CFG["lr"],
+                         weight_decay=CFG["weight_decay"])
+scheduler  = optim.lr_scheduler.CosineAnnealingLR(
+    optimizer, T_max=CFG["epochs"]
+)
+
+# ---------------------------------------------------
+# 5. TRAIN / VAL LOOP
+# ---------------------------------------------------
+for epoch in range(CFG["epochs"]):
+    # --- training ---
+    model.train()
+    running_loss, correct, seen = 0, 0, 0
+    for x, y in train_loader:
+        x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
+
+        optimizer.zero_grad()
+        logits = model(x)
+        loss   = criterion(logits, y)
+        loss.backward()
+        optimizer.step()
+
+        running_loss += loss.item() * x.size(0)
+        correct      += logits.argmax(1).eq(y).sum().item()
+        seen         += x.size(0)
+
+    train_acc = 100 * correct / seen
+    train_loss = running_loss / seen
+
+    # --- validation ---
+    model.eval()
+    correct, seen = 0, 0
+    with torch.no_grad():
+        for x, y in val_loader:
+            x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
+            logits = model(x)
+            correct += logits.argmax(1).eq(y).sum().item()
+            seen    += x.size(0)
+    val_acc = 100 * correct / seen
+
+    scheduler.step()
+
+    print(f"Epoch {epoch+1:02}/{CFG['epochs']}  "
+          f"loss {train_loss:.3f}  "
+          f"train acc {train_acc:.1f}%  "
+          f"val acc {val_acc:.1f}%")
+
+# ---------------------------------------------------
+# 6. SAVE (optional)
+# ---------------------------------------------------
+torch.save(model.state_dict(), "vit_pet_classifier.pth")
+```
 
 
 
