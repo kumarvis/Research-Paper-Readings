@@ -115,7 +115,78 @@ Create a hierarchical outline of the paper. For every top-level section include 
 *Purpose:* Lists cited prior literature.\
 9. **Appendices
 
+## Prompt 4
+Task: 
+1. Explain *Figure 1* of the attached paper in detail, focusing on the model architecture it illustrates.
+2. Produce a numbered list that traces the data/control flow, one step per diagram arrow:
+   • Use the exact component name or label shown in the figure.  
+   • State the main operation performed in ≤50 words.  
+   • Specify the input(s) and output(s) for that step.
+# 1  Detailed Explanation of Figure 1
 
+Figure 1 presents a bird’s-eye view of the **Vision Transformer (ViT)** classifier. The key idea is to treat an image as a *sequence of patch tokens*, feed those tokens—plus a special class token—into a standard Transformer encoder, and then read out the class prediction from the final representation of that class token. Nothing in the core encoder is vision-specific; all image handling happens in the patch-embedding “stem” and in the learned positional embeddings that preserve spatial order. The architecture therefore re-uses mature NLP Transformer implementations while replacing CNN inductive biases with scale-driven learning.
+
+Major blocks shown:
+
+* **Linear Projection of Flattened Patches** – cuts the image into non-overlapping P×P patches, flattens each, and maps it to a D-dimensional vector.
+* **[class] Embedding** – a learned vector prepended to the patch sequence whose final state will carry the whole-image representation.
+* **Patch + Position Embedding** – adds learnable 1-D positional embeddings to every token (patch or class).
+* **Transformer Encoder (stack repeated L times)** – alternates Multi-Head Self-Attention (MSA), LayerNorm and MLP sub-blocks with residual connections.
+* **MLP Head** – a task-specific classifier (1-layer during fine-tuning) that transforms the final [class] representation into logits over K classes.
+
+Flow: Image → patch tokens → positional addition → Transformer stack → [class] vector → logits.
+
+***
+
+# 2  Arrow-by-Arrow Data/Control Flow
+
+1. **Input Image → Linear Projection of Flattened Patches**
+    - Operation: Slice image into P×P non-overlapping patches, flatten each, apply a linear map.
+    - Inputs: H×W×C image.
+    - Outputs: N patch embeddings ∈ℝᴺ×ᴰ.
+2. **[class] Embedding → Sequence Concatenation**
+    - Operation: Prepend a learned [class] vector to patch embeddings.
+    - Inputs: [class] token (1×D), patch embeddings (N×D).
+    - Outputs: (N+1)-token sequence ∈ℝᴺ⁺¹×ᴰ.
+3. **Position Embedding Addition → Patch + Position Embedding**
+    - Operation: Add learnable 1-D positional vectors element-wise to each token.
+    - Inputs: token sequence, positional table (N+1×D).
+    - Outputs: position-encoded sequence ∈ℝᴺ⁺¹×ᴰ.
+4. **Sequence → Transformer Encoder (Layer 1: Multi-Head Attention)**
+    - Operation: Each token attends to all tokens; produces context-mixed representations.
+    - Inputs: position-encoded sequence.
+    - Outputs: attention-updated sequence (same shape).
+5. **Residual Add \& Norm (Layer 1)**
+    - Operation: Add skip connection and apply LayerNorm.
+    - Inputs: previous layer input and attention output.
+    - Outputs: normalized sequence.
+6. **MLP Block (Layer 1)**
+    - Operation: Two dense layers with GELU, projecting D→D_MLP→D.
+    - Inputs: normalized sequence.
+    - Outputs: feed-forward updated sequence.
+7. **Residual Add \& Norm (Layer 1)**
+    - Operation: Second skip connection + LayerNorm.
+    - Inputs: attention-normalized sequence and MLP output.
+    - Outputs: sequence for next layer.
+8. **Steps 4–7 repeat L − 1 times in Transformer Encoder**
+    - Operation: Deeper context mixing via identical layers.
+    - Inputs: sequence from previous layer.
+    - Outputs: final encoded sequence z_L ∈ℝᴺ⁺¹×ᴰ.
+9. **Extract [class] Token → LN**
+    - Operation: Apply LayerNorm to final [class] vector.
+    - Inputs: first token of z_L.
+    - Outputs: image representation y ∈ℝᴰ.
+10. **Representation y → MLP Head**
+    - Operation: Single linear layer (fine-tuning) mapping D→K logits.
+    - Inputs: y.
+    - Outputs: class-score vector logits ∈ℝᴷ.
+11. **Logits → Softmax (not drawn)**
+    - Operation: Convert logits to class probabilities.
+    - Inputs: logits.
+    - Outputs: probability distribution over K classes.
+
+The eleven numbered steps follow every arrow in Figure 1 and collectively describe the complete forward path from raw image pixels to predicted class probabilities.
+<span style="display:none">[^5_1]</span>
 
 # Equations (1) – (4) in Vision Transformer (ViT)
 
